@@ -1,7 +1,8 @@
-// SpotKeys.cpp : This file contains the 'main' function. Program execution begins and ends there.
-
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 #include <iostream>
 #include <Windows.h>
+
 
 int register_arrow(int id, UINT vk)
 {
@@ -17,7 +18,7 @@ int register_arrow(int id, UINT vk)
     }
 }
 
-int main()
+int keys()
 {
     int id = 0;
     int arrows[4]{};
@@ -37,5 +38,23 @@ int main()
         //if (msg.message == WM_HOTKEY)
             //std::cout << " -> WM_HOTKEY received";
     }
+    return 0;
+}
+
+int main(int argc, char* argv[])
+{
+    wchar_t* program = Py_DecodeLocale(argv[0], NULL);
+    if (program == NULL) {
+        fprintf(stderr, "Fatal error: cannot decode argv[0]\n");
+        exit(1);
+    }
+    Py_SetProgramName(program);  /* optional but recommended */
+    Py_Initialize();
+    PyRun_SimpleString("from time import time,ctime\n"
+        "print('Today is', ctime(time()))\n");
+    if (Py_FinalizeEx() < 0) {
+        exit(120);
+    }
+    PyMem_RawFree(program);
     return 0;
 }
