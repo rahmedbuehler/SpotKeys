@@ -12,9 +12,6 @@
 #include <string>
 #include <Windows.h>
 
-// Save cookie after logging in once? https://stackoverflow.com/questions/48880646/python-selenium-use-a-browser-that-is-already-open-and-logged-in-with-login-cre
-// Option to read user/password from .txt file
-
 int register_arrow(int id, UINT vk)
 // Register hot key <vk> with <id>
 {
@@ -29,17 +26,35 @@ int register_arrow(int id, UINT vk)
 	}
 }
 
-void read_settings()
+int read_settings()
 // Read settings from "SpotKeys_Settings.txt"
 {
 	std::ifstream settings_file;
 	settings_file.open("SpotKeys_Settings.txt");
+	std::string FF_PATH{};
+	std::string GECKO_PATH{};
+	std::string ADDON_PATH{};
 	if (settings_file.is_open())
 	{
 		std::string line{};
 		while (std::getline(settings_file, line))
 		{
-			std::cout << line << '\n';
+			if (line.find("FF_PATH") != -1)
+			{
+				FF_PATH = line.replace(0, line.find(" = ") + 3, "");
+			}
+			else if (line.find("GECKO_PATH") != -1)
+			{
+				GECKO_PATH = line.replace(0, line.find(" = ") + 3, "");
+			}
+			else if (line.find("ADDON_PATH") != -1)
+			{
+				ADDON_PATH = line.replace(0, line.find(" = ") + 3, "");
+			}
+			else 
+			{
+				std::cout << "Unexpected Setting: " << line << "\n";
+			}
 		}
 		settings_file.close();
 	}
@@ -48,6 +63,9 @@ void read_settings()
 
 int main(int argc, char* argv[])
 {
+	read_settings();
+	return 0;
+
 	wchar_t* program = Py_DecodeLocale(argv[0], NULL);
 	if (program == NULL) 
 	{
@@ -61,17 +79,15 @@ int main(int argc, char* argv[])
 		register_arrow(i, arrows[i]);
 	}
 
-	read_settings()
-
 	Py_SetProgramName(program);  /* optional but recommended */
 	Py_Initialize();
 
 	PyRun_SimpleString("from selenium import webdriver\n"
 		"from selenium.webdriver.firefox.options import Options\n"
 		"options = Options()\n"
-		"options.binary_location = r''\n"
-		"driver = webdriver.Firefox(executable_path = r'', options = options)\n"
-		"driver.install_addon(r'',temporary=True)\n"
+		"options.binary_location = r'" + GECKO_PATH + "'\n"
+		"driver = webdriver.Firefox(executable_path = r'" + FF_PATH + "', options = options)\n"
+		"driver.install_addon(r'"+ ADDON_PATH + "',temporary=True)\n"
 		"driver.get('https://open.spotify.com/')\n");
 
 	MSG msg = { 0 };
