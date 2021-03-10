@@ -7,12 +7,14 @@
 	#include <python.h>
 #endif
 
-#include <iostream>
-#include <fstream>
+#include <iostream> // for std:cout
+#include <fstream> // for std::ifstream
+#include <iterator> // for std::ssize
 #include <string>
+#include <sstream>
 #include <Windows.h>
 
-int register_arrow(int id, UINT vk)
+int register_key(int id, UINT vk)
 // Register hot key <vk> with <id>
 {
 	if (RegisterHotKey(NULL, id, MOD_NOREPEAT, vk))
@@ -26,30 +28,45 @@ int register_arrow(int id, UINT vk)
 	}
 }
 
-int read_settings()
-// Read settings from "SpotKeys_Settings.txt"
+struct Profile
 {
+	std::string username{};
+	std::string password{};
+	std::string ff_path{};
+	std::string gecko_path{};
+	std::string addon_path{};
+};
+
+Profile read_settings()
+// Read settings from "SpotKeys_Settings.txt" and return <Settings> struct
+{
+	Profile settings{};
 	std::ifstream settings_file;
 	settings_file.open("SpotKeys_Settings.txt");
-	std::string FF_PATH{};
-	std::string GECKO_PATH{};
-	std::string ADDON_PATH{};
 	if (settings_file.is_open())
 	{
 		std::string line{};
 		while (std::getline(settings_file, line))
 		{
-			if (line.find("FF_PATH") != -1)
+			if (line.find("USERNAME") != -1)
 			{
-				FF_PATH = line.replace(0, line.find(" = ") + 3, "");
+				settings.username = line.replace(0, line.find(" = ") + 3, "");
+			}
+			else if (line.find("PASSWORD") != -1)
+			{
+				settings.password = line.replace(0, line.find(" = ") + 3, "");
+			}
+			else if (line.find("FF_PATH") != -1)
+			{
+				settings.ff_path = line.replace(0, line.find(" = ") + 3, "");
 			}
 			else if (line.find("GECKO_PATH") != -1)
 			{
-				GECKO_PATH = line.replace(0, line.find(" = ") + 3, "");
+				settings.gecko_path = line.replace(0, line.find(" = ") + 3, "");
 			}
 			else if (line.find("ADDON_PATH") != -1)
 			{
-				ADDON_PATH = line.replace(0, line.find(" = ") + 3, "");
+				settings.addon_path = line.replace(0, line.find(" = ") + 3, "");
 			}
 			else 
 			{
@@ -58,13 +75,12 @@ int read_settings()
 		}
 		settings_file.close();
 	}
-	return 0;
+	return settings;
 }
 
 int main(int argc, char* argv[])
 {
-	read_settings();
-	return 0;
+	Profile settings{ read_settings() };
 
 	wchar_t* program = Py_DecodeLocale(argv[0], NULL);
 	if (program == NULL) 
@@ -73,30 +89,57 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	constexpr int arrows[5]{ VK_ESCAPE, VK_LEFT, VK_RIGHT, VK_DOWN, VK_UP };
-	for (int i{ 0 }; i < 5; ++i)
+	constexpr int keys[]{ VK_ESCAPE, VK_LEFT, VK_RIGHT, VK_DOWN, VK_UP };
+
+	for (int key : keys)
 	{
-		register_arrow(i, arrows[i]);
+		register_key(key,key);
 	}
 
 	Py_SetProgramName(program);  /* optional but recommended */
 	Py_Initialize();
 
-	PyRun_SimpleString("from selenium import webdriver\n"
-		"from selenium.webdriver.firefox.options import Options\n"
-		"options = Options()\n"
-		"options.binary_location = r'" + GECKO_PATH + "'\n"
-		"driver = webdriver.Firefox(executable_path = r'" + FF_PATH + "', options = options)\n"
-		"driver.install_addon(r'"+ ADDON_PATH + "',temporary=True)\n"
-		"driver.get('https://open.spotify.com/')\n");
+
+	
+	std::stringstream ss;
+	ss << "from selenium import webdriver\n"
+		<< "from selenium.webdriver.firefox.options import Options\n"
+		<< "from selenium.webdriver.common.keys import Keys\n"
+		<< "options = Options()\n"
+		<< "options.binary_location = r'" << settings.ff_path << "'\n"
+		<< "options.set_preference('media.gmp-manager.updateEnabled',True)\n" // Needed to play DRM content
+		<< "driver = webdriver.Firefox(executable_path = r'" << settings.gecko_path << "', options = options)\n"
+		<< "driver.install_addon(r'" << settings.addon_path << "',temporary=True)\n"
+		<< "driver.get('https://accounts.spotify.com/en/login?continue=https:%2F%2Fopen.spotify.com%2F')\n"
+		<< "user_element = driver.find_element_by_id('login-username')\n"
+		<< "user_element.clear()\n"
+		<< "user_element.send_keys('" << settings.username << "')\n"
+		<< "password_element = driver.find_element_by_id('login-password')\n"
+		<< "password_element.clear()\n"
+		<< "password_element.send_keys('" << settings.password << "')\n"
+		<< "password_element.send_keys(Keys.RETURN)\n";
+
+	std::string py_program{ ss.str() };
+	const char* c_py_program{ py_program.c_str() };
+	PyRun_SimpleString(c_py_program);
+	PyRun_SimpleString("previous_btn = driver.find_element_by_xpath()\n");
 
 	MSG msg = { 0 };
 	while (GetMessage(&msg, NULL, 0, 0) != 0)
 	{
 		std::cout << "\nButton " << msg.wParam << " Pressed";
-		if (msg.wParam == 0)
+		switch (msg.wParam)
 		{
-			break;
+			case VK_ESCAPE:
+				PyRun_SimpleString("driver.quit()\n");
+				if (Py_FinalizeEx() < 0)
+				{
+					exit(120);
+				}
+				PyMem_RawFree(program);
+				return 0;
+			case VK_LEFT:
+				PyRun_SimpleString("\n");
 		}
 	}
 
