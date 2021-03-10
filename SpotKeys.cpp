@@ -39,6 +39,7 @@ struct Profile
 
 Profile read_settings()
 // Read settings from "SpotKeys_Settings.txt" and return <Settings> struct
+// Sanitize input?
 {
 	Profile settings{};
 	std::ifstream settings_file;
@@ -89,7 +90,7 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	constexpr int keys[]{ VK_ESCAPE, VK_LEFT, VK_RIGHT, VK_DOWN, VK_UP };
+	constexpr int keys[]{ VK_ESCAPE, VK_LEFT, VK_RIGHT, VK_NUMPAD0, VK_DOWN, VK_UP };
 
 	for (int key : keys)
 	{
@@ -122,15 +123,15 @@ int main(int argc, char* argv[])
 	std::string py_program{ ss.str() };
 	const char* c_py_program{ py_program.c_str() };
 	PyRun_SimpleString(c_py_program);
-	PyRun_SimpleString("previous_btn = driver.find_element_by_xpath()\n");
 
 	MSG msg = { 0 };
-	while (GetMessage(&msg, NULL, 0, 0) != 0)
+	while (GetMessage(&msg, NULL, 0, 0) != 0) // Error check is suggested here
 	{
-		std::cout << "\nButton " << msg.wParam << " Pressed";
+		PyRun_SimpleString("btns = driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')\n");
 		switch (msg.wParam)
 		{
 			case VK_ESCAPE:
+				std::cout << "Exiting SpotKeys...";
 				PyRun_SimpleString("driver.quit()\n");
 				if (Py_FinalizeEx() < 0)
 				{
@@ -139,7 +140,17 @@ int main(int argc, char* argv[])
 				PyMem_RawFree(program);
 				return 0;
 			case VK_LEFT:
-				PyRun_SimpleString("\n");
+				std::cout << "VK_LEFT Pressed";
+				PyRun_SimpleString("btns[1].click()\n");
+				break;
+			case VK_RIGHT:
+				std::cout << "VK_RIGHT Pressed";
+				PyRun_SimpleString("btns[3].click()\n");
+				break;
+			case VK_NUMPAD0:
+				std::cout << "VK_NUMPAD0 Pressed";
+				PyRun_SimpleString("btns[2].click()\n");
+				break;
 		}
 	}
 
