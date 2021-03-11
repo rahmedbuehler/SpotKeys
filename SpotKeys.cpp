@@ -28,8 +28,8 @@ struct Profile
 {
 	std::string username{};
 	std::string password{};
-	std::string ff_path{};
-	std::string gecko_path{};
+	std::string ff_path{"C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe"};
+	std::string gecko_path{ "C:\\Python\\geckodriver.exe" };
 	std::string addon_path{};
 	int keys[num_key_ids]{ VK_ESCAPE, VK_HOME, VK_END, VK_INSERT, VK_PRIOR, VK_NEXT };
 };
@@ -37,7 +37,6 @@ struct Profile
 Profile read_settings()
 {
 	// Read settings from "SpotKeys_Settings.txt" and return <Settings> struct
-	// Sanitize input?
 	Profile settings{};
 	std::ifstream settings_file;
 	settings_file.open("SpotKeys_Settings.txt");
@@ -46,11 +45,11 @@ Profile read_settings()
 		std::string line{};
 		while (std::getline(settings_file, line))
 		{
-			if (line.find("USERNAME") != -1)
+			if (line.find("SPOTIFY_USERNAME") != -1)
 			{
 				settings.username = line.replace(0, line.find(" = ") + 3, "");
 			}
-			else if (line.find("PASSWORD") != -1)
+			else if (line.find("SPOTIFY_PASSWORD") != -1)
 			{
 				settings.password = line.replace(0, line.find(" = ") + 3, "");
 			}
@@ -116,16 +115,25 @@ int main(int argc, char* argv[])
 		<< "options.binary_location = r'" << settings.ff_path << "'\n"
 		<< "options.set_preference('media.gmp-manager.updateEnabled',True)\n" // Needed to play DRM content
 		<< "driver = webdriver.Firefox(executable_path = r'" << settings.gecko_path << "', options = options)\n"
-		<< "driver.install_addon(r'" << settings.addon_path << "',temporary=True)\n"
 		<< "driver.get('https://accounts.spotify.com/en/login?continue=https:%2F%2Fopen.spotify.com%2F')\n"
-		<< "user_element = driver.find_element_by_id('login-username')\n"
-		<< "user_element.clear()\n"
-		<< "user_element.send_keys('" << settings.username << "')\n"
-		<< "password_element = driver.find_element_by_id('login-password')\n"
-		<< "password_element.clear()\n"
-		<< "password_element.send_keys('" << settings.password << "')\n"
-		<< "password_element.send_keys(Keys.RETURN)\n"
 		<< "last_url = ''\n";
+	if (settings.addon_path != "")
+	{
+		ss << "driver.install_addon(r'" << settings.addon_path << "',temporary=True)\n";
+	}
+	if (settings.username != "")
+	{
+		ss << "user_element = driver.find_element_by_id('login-username')\n"
+			<< "user_element.clear()\n"
+			<< "user_element.send_keys('" << settings.username << "')\n";
+		if (settings.password != "")
+		{
+			ss << "password_element = driver.find_element_by_id('login-password')\n"
+				<< "password_element.clear()\n"
+				<< "password_element.send_keys('" << settings.password << "')\n"
+				<< "password_element.send_keys(Keys.RETURN)\n";
+		}
+	}
 
 	std::string py_program{ ss.str() };
 	const char* c_py_program{ py_program.c_str() };
