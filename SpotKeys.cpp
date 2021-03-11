@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	constexpr int keys[]{ VK_ESCAPE, VK_LEFT, VK_RIGHT, VK_NUMPAD0, VK_DOWN, VK_UP };
+	constexpr int keys[]{ VK_ESCAPE, VK_HOME, VK_END, VK_INSERT, VK_NEXT, VK_PRIOR };
 
 	for (int key : keys)
 	{
@@ -106,6 +106,7 @@ int main(int argc, char* argv[])
 	ss << "from selenium import webdriver\n"
 		<< "from selenium.webdriver.firefox.options import Options\n"
 		<< "from selenium.webdriver.common.keys import Keys\n"
+		<< "from selenium.webdriver.common.action_chains import ActionChains\n"
 		<< "options = Options()\n"
 		<< "options.binary_location = r'" << settings.ff_path << "'\n"
 		<< "options.set_preference('media.gmp-manager.updateEnabled',True)\n" // Needed to play DRM content
@@ -118,16 +119,30 @@ int main(int argc, char* argv[])
 		<< "password_element = driver.find_element_by_id('login-password')\n"
 		<< "password_element.clear()\n"
 		<< "password_element.send_keys('" << settings.password << "')\n"
-		<< "password_element.send_keys(Keys.RETURN)\n";
+		<< "password_element.send_keys(Keys.RETURN)\n"
+		<< "last_url = ''\n";
 
 	std::string py_program{ ss.str() };
 	const char* c_py_program{ py_program.c_str() };
 	PyRun_SimpleString(c_py_program);
 
 	MSG msg = { 0 };
-	while (GetMessage(&msg, NULL, 0, 0) != 0) // Error check is suggested here
+	BOOL msg_code;
+	while ((msg_code = GetMessage(&msg, NULL, 0, 0)) != 0 )
 	{
-		PyRun_SimpleString("btns = driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')\n");
+		//Error from GetMessage
+		if (msg_code == -1) 
+		{
+			return -1;
+		}
+		// Renew element tracking when url changes
+		PyRun_SimpleString("if last_url != driver.current_url:\n"
+			"\tbtns = driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')\n"
+			"\tvolume_slider = driver.find_elements_by_css_selector('button.middle-align.progress-bar__slider')[1]\n"//Currently 4 such Elements; want the 2nd
+			"\tvolume_up = ActionChains(driver)\n"
+			"\tvolume_up.drag_and_drop_by_offset(volume_slider,10,0)\n"
+			"\tvolume_down = ActionChains(driver)\n"
+			"\tvolume_down.drag_and_drop_by_offset(volume_slider,-10,0)\n");
 		switch (msg.wParam)
 		{
 			case VK_ESCAPE:
@@ -139,17 +154,20 @@ int main(int argc, char* argv[])
 				}
 				PyMem_RawFree(program);
 				return 0;
-			case VK_LEFT:
-				std::cout << "VK_LEFT Pressed";
-				PyRun_SimpleString("btns[1].click()\n");
+			case VK_HOME:
+				PyRun_SimpleString("btns[1].click()\n"); // Previous
 				break;
-			case VK_RIGHT:
-				std::cout << "VK_RIGHT Pressed";
-				PyRun_SimpleString("btns[3].click()\n");
+			case VK_END:
+				PyRun_SimpleString("btns[3].click()\n"); // Next
 				break;
-			case VK_NUMPAD0:
-				std::cout << "VK_NUMPAD0 Pressed";
-				PyRun_SimpleString("btns[2].click()\n");
+			case VK_INSERT:
+				PyRun_SimpleString("btns[2].click()\n"); // Play/Pause
+				break;
+			case VK_PRIOR:
+				PyRun_SimpleString("volume_up.perform()\n"); // Volume Up
+				break;
+			case VK_NEXT:
+				PyRun_SimpleString("volume_down.perform()\n"); // Volume Down
 				break;
 		}
 	}
