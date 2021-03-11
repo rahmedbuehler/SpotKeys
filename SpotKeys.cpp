@@ -14,19 +14,15 @@
 #include <sstream>
 #include <Windows.h>
 
-int register_key(int id, UINT vk)
-// Register hot key <vk> with <id>
-{
-	if (RegisterHotKey(NULL, id, MOD_NOREPEAT, vk))
-	{
-		return 0;
-	}
-	else
-	{
-		std::cout << "Error code " << GetLastError();
-		return 1;
-	}
-}
+enum Key_ID {
+	key_id_exit,
+	key_id_previous,
+	key_id_next,
+	key_id_play,
+	key_id_volume_up,
+	key_id_volume_down,
+	num_key_ids
+};
 
 struct Profile
 {
@@ -35,12 +31,13 @@ struct Profile
 	std::string ff_path{};
 	std::string gecko_path{};
 	std::string addon_path{};
+	int keys[num_key_ids]{ VK_ESCAPE, VK_HOME, VK_END, VK_INSERT, VK_PRIOR, VK_NEXT };
 };
 
 Profile read_settings()
-// Read settings from "SpotKeys_Settings.txt" and return <Settings> struct
-// Sanitize input?
 {
+	// Read settings from "SpotKeys_Settings.txt" and return <Settings> struct
+	// Sanitize input?
 	Profile settings{};
 	std::ifstream settings_file;
 	settings_file.open("SpotKeys_Settings.txt");
@@ -79,9 +76,27 @@ Profile read_settings()
 	return settings;
 }
 
+int register_key(int id, UINT vk)
+// Register hot key <vk> with <id>
+{
+	if (RegisterHotKey(NULL, id, MOD_NOREPEAT, vk))
+	{
+		return 0;
+	}
+	else
+	{
+		std::cout << "Error code " << GetLastError();
+		return 1;
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	Profile settings{ read_settings() };
+	for (int key_id{ 0 }; key_id < num_key_ids; ++key_id)
+	{
+		register_key(key_id, settings.keys[key_id]);
+	}
 
 	wchar_t* program = Py_DecodeLocale(argv[0], NULL);
 	if (program == NULL) 
@@ -89,18 +104,8 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "Fatal error: cannot decode argv[0]\n");
 		exit(1);
 	}
-
-	constexpr int keys[]{ VK_ESCAPE, VK_HOME, VK_END, VK_INSERT, VK_NEXT, VK_PRIOR };
-
-	for (int key : keys)
-	{
-		register_key(key,key);
-	}
-
-	Py_SetProgramName(program);  /* optional but recommended */
+	Py_SetProgramName(program);
 	Py_Initialize();
-
-
 	
 	std::stringstream ss;
 	ss << "from selenium import webdriver\n"
@@ -130,9 +135,12 @@ int main(int argc, char* argv[])
 	BOOL msg_code;
 	while ((msg_code = GetMessage(&msg, NULL, 0, 0)) != 0 )
 	{
-		//Error from GetMessage
+		// Error from GetMessage
 		if (msg_code == -1) 
 		{
+			PyRun_SimpleString("driver.quit()\n");
+			Py_FinalizeEx();
+			PyMem_RawFree(program);
 			return -1;
 		}
 		// Renew element tracking when url changes
@@ -145,28 +153,28 @@ int main(int argc, char* argv[])
 			"\tvolume_down.drag_and_drop_by_offset(volume_slider,-10,0)\n");
 		switch (msg.wParam)
 		{
-			case VK_ESCAPE:
+			case key_id_exit: 
 				std::cout << "Exiting SpotKeys...";
-				PyRun_SimpleString("driver.quit()\n");
+				PyRun_SimpleString("driver.quit()\n"); //Exit
 				if (Py_FinalizeEx() < 0)
 				{
 					exit(120);
 				}
 				PyMem_RawFree(program);
 				return 0;
-			case VK_HOME:
+			case key_id_previous:
 				PyRun_SimpleString("btns[1].click()\n"); // Previous
 				break;
-			case VK_END:
+			case key_id_next:
 				PyRun_SimpleString("btns[3].click()\n"); // Next
 				break;
-			case VK_INSERT:
+			case key_id_play:
 				PyRun_SimpleString("btns[2].click()\n"); // Play/Pause
 				break;
-			case VK_PRIOR:
+			case key_id_volume_up:
 				PyRun_SimpleString("volume_up.perform()\n"); // Volume Up
 				break;
-			case VK_NEXT:
+			case key_id_volume_down:
 				PyRun_SimpleString("volume_down.perform()\n"); // Volume Down
 				break;
 		}
