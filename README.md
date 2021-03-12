@@ -12,7 +12,7 @@ A C++ program that allows simple manipulation of Spotify's webplayer (play, paus
 
    > ADDON_PATH = C:\Users\USER\AppData\Roaming\Mozilla\Firefox\Profiles\o3m64jnd.default-1234567890123\extensions\ADDON.xpi
 
-   Username and password are optional.
+   Spotify username and password are optional.
   
 3. Build program.
 
