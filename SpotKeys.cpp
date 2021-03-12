@@ -9,7 +9,6 @@
 
 #include <fstream> // for std::ifstream
 #include <iostream> // for std::cout
-#include <iterator> // for std::ssize
 #include <string> // for std::string
 #include <sstream> // for std::stringstream
 #include <Windows.h> // for RegisterHotkey, GetMessage, MapVirtualKeyA, GetKeyNameTextA
@@ -113,7 +112,7 @@ void output_key_bindings(Profile settings)
 int main(int argc, char* argv[])
 {
 	// Read and register bindings
-	std::cout << "SpotKeys starting...\n\n";
+	std::cout << "Starting SpotKeys...\n\n";
 	Profile settings{ read_settings() };
 	for (int key_id{ 0 }; key_id < num_key_ids; ++key_id)
 	{
