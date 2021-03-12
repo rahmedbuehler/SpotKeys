@@ -8,7 +8,7 @@ A C++ program that allows simple manipulation of Spotify's webplayer (play, paus
 3. Build program.
 
 ## Dependencies
-Python 3.8+
-Selenium 3.141+ (Python)
-Geckodriver 0.29+
-Firefox 86+
+-Python 3.8+
+-Selenium 3.141+ (Python)
+-Geckodriver 0.29+
+-Firefox 86+
