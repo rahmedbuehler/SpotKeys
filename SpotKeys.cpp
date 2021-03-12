@@ -7,12 +7,12 @@
 	#include <python.h>
 #endif
 
-#include <iostream> // for std:cout
 #include <fstream> // for std::ifstream
+#include <iostream> // for std::cout
 #include <iterator> // for std::ssize
-#include <string>
-#include <sstream>
-#include <Windows.h>
+#include <string> // for std::string
+#include <sstream> // for std::stringstream
+#include <Windows.h> // for RegisterHotkey, GetMessage, MapVirtualKeyA, GetKeyNameTextA
 
 enum Key_ID {
 	key_id_exit,
@@ -24,6 +24,8 @@ enum Key_ID {
 	num_key_ids
 };
 
+const std::string key_id_labels[num_key_ids]{ "Exit", "Previous", "Next", "Play/Pause", "Volume Up", "Volume Down" };
+
 struct Profile
 {
 	std::string username{};
@@ -31,12 +33,13 @@ struct Profile
 	std::string ff_path{"C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe"};
 	std::string gecko_path{ "C:\\Python\\geckodriver.exe" };
 	std::string addon_path{};
-	int keys[num_key_ids]{ VK_ESCAPE, VK_HOME, VK_END, VK_INSERT, VK_PRIOR, VK_NEXT };
+	int keys[num_key_ids]{ VK_ESCAPE, VK_END, VK_NEXT, VK_INSERT, VK_ADD, VK_SUBTRACT }; // Positions are labeled by Key_ID enum
 };
 
 Profile read_settings()
+// Read settings from "SpotKeys_Settings.txt" and return <Settings> struct.  Assumes settings file has keyword
+// followed by " = " and then desired value.
 {
-	// Read settings from "SpotKeys_Settings.txt" and return <Settings> struct
 	Profile settings{};
 	std::ifstream settings_file;
 	settings_file.open("SpotKeys_Settings.txt");
@@ -76,7 +79,7 @@ Profile read_settings()
 }
 
 int register_key(int id, UINT vk)
-// Register hot key <vk> with <id>
+// Register hot key <vk> with id <id>
 {
 	if (RegisterHotKey(NULL, id, MOD_NOREPEAT, vk))
 	{
@@ -89,14 +92,36 @@ int register_key(int id, UINT vk)
 	}
 }
 
+void output_key_bindings(Profile settings)
+// Output key bindings from <settings> using <key_id_labels>
+{
+	std::cout << "Key Bindings\n";
+	for (int i{ 0 }; i < num_key_ids; ++i)
+	{
+		std::cout << "\t" << key_id_labels[i] << ": ";
+		CHAR name[1024];
+		UINT scanCode = MapVirtualKeyA(settings.keys[i], MAPVK_VK_TO_VSC);
+		LONG lParamValue = (scanCode << 16);
+		int result = GetKeyNameTextA(lParamValue, name, 1024);
+		if (result > 0)
+		{
+			std::wcout << name << "\n";
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
+	// Read and register bindings
+	std::cout << "SpotKeys starting...\n\n";
 	Profile settings{ read_settings() };
 	for (int key_id{ 0 }; key_id < num_key_ids; ++key_id)
 	{
 		register_key(key_id, settings.keys[key_id]);
 	}
+	output_key_bindings(settings);
 
+	// Set up Python
 	wchar_t* program = Py_DecodeLocale(argv[0], NULL);
 	if (program == NULL) 
 	{
@@ -106,6 +131,7 @@ int main(int argc, char* argv[])
 	Py_SetProgramName(program);
 	Py_Initialize();
 	
+	// Embed Selenium Python package and initialize webdriver
 	std::stringstream ss;
 	ss << "from selenium import webdriver\n"
 		<< "from selenium.webdriver.firefox.options import Options\n"
@@ -134,11 +160,11 @@ int main(int argc, char* argv[])
 				<< "password_element.send_keys(Keys.RETURN)\n";
 		}
 	}
-
 	std::string py_program{ ss.str() };
 	const char* c_py_program{ py_program.c_str() };
 	PyRun_SimpleString(c_py_program);
 
+	// Listen for bound keys and execute corresponding command
 	MSG msg = { 0 };
 	BOOL msg_code;
 	while ((msg_code = GetMessage(&msg, NULL, 0, 0)) != 0 )
@@ -162,7 +188,7 @@ int main(int argc, char* argv[])
 		switch (msg.wParam)
 		{
 			case key_id_exit: 
-				std::cout << "Exiting SpotKeys...";
+				std::cout << "\nExiting SpotKeys...\n";
 				PyRun_SimpleString("driver.quit()\n"); //Exit
 				if (Py_FinalizeEx() < 0)
 				{
@@ -188,6 +214,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	// Close Python
 	PyRun_SimpleString("driver.quit()\n");
 	if (Py_FinalizeEx() < 0)
 	{
