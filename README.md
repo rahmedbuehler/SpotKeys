@@ -3,9 +3,9 @@ A C++ program that allows simple manipulation of Spotify's webplayer (play, paus
 
 ## Set Up
 
-- Install dependencies.
-- Add path to Geckodriver and Firefox to SpotKeys_Settings.txt as well as path to any desired addon.
-- Build
+1. Install dependencies.
+2. Add path to Geckodriver and Firefox to SpotKeys_Settings.txt as well as path to any desired addon.
+3. Build program.
 
 ## Dependencies
 Python 3.8+
