@@ -17,7 +17,7 @@ class Profile:
 
     def read_settings(self):
         '''
-        Read settings from "SpotKeys_Settings.txt" and return <Settings> struct.  Assumes settings file has keyword
+        Read settings from "SpotKeys_Settings.txt" and return <Profile> object.  Assumes settings file has keyword
         followed by " = " and then desired value.
         '''
         if not os.path.isfile("SpotKeys_Settings.txt"):
@@ -41,11 +41,11 @@ class Profile:
 
     def output_key_bindings(self):
         '''
-        Output key bindings from <settings> using <key_id_labels>
+        Output key bindings from <keys> dictionary.
         '''
-        print("Key Bindings\n")
+        print("Key Bindings")
         for k,v in self.keys.items():
-            print(f"\t{k}: {v}\n")
+            print(f"\t{k}: {v}")
 
 class Hotkey_Tracker:
 
@@ -53,11 +53,17 @@ class Hotkey_Tracker:
         self.value = None
 
     def fire(self, new_value):
+        '''
+        Set <value> to <new_value>, unhooking hotkeys if this is "Exit".
+        '''
         self.value = new_value
         if self.value == "Exit":
             keyboard.unhook_all()
 
     def clear(self):
+        '''
+        Reset <value> to <None> so long as it isn't "Exit"
+        '''
         if self.value != "Exit":
             self.value = None
 
@@ -81,7 +87,7 @@ if __name__ == "__main__":
     options.set_preference('media.gmp-manager.updateEnabled',True) # Needed to play DRM content
     driver = webdriver.Firefox(options = options)
     driver.get('https://accounts.spotify.com/en/login?continue=https:%2F%2Fopen.spotify.com%2F')
-    last_url = ''
+
     if settings.addon_path != None:
         driver.install_addon(settings.addon_path,temporary=True)
     if settings.username != None:
@@ -94,12 +100,14 @@ if __name__ == "__main__":
             password_element.send_keys(settings.password)
             password_element.send_keys(Keys.RETURN)
 
+    last_url = ''
+    initialized = False
     while tracker.value != "Exit":
         if last_url != driver.current_url:
             btns = driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')
             volume_slider = driver.find_elements_by_css_selector('button.middle-align.progress-bar__slider')
             if len(btns) > 3 and len(volume_slider) > 1:
-                volume_slider = volume_slider[1] # Currently 4 such Elements; want the 2nk
+                volume_slider = volume_slider[1] # Currently 4 such Elements; want the 2nd
                 volume_up = ActionChains(driver)
                 volume_up.drag_and_drop_by_offset(volume_slider,10,0)
                 volume_down = ActionChains(driver)
