@@ -13,7 +13,7 @@ class Profile:
         self.ff_path = None
         self.gecko_path = None
         self.addon_path = None
-        self.keys = {"Exit": "escape", "Previous":"alt+left", "Next":"alt+right", "Play/Pause":"alt+space", "Volume Up":"alt+up", "Volume Down":"alt+down"}
+        self.keys = {"Exit": "alt+escape", "Previous":"alt+left", "Next":"alt+right", "Play/Pause":"alt+space", "Volume Up":"alt+up", "Volume Down":"alt+down"}
 
     def read_settings(self):
         '''
