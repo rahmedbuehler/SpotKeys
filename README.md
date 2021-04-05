@@ -25,6 +25,7 @@ A script that allows simple manipulation of Spotify's webplayer (play, pause, ne
 
 1. Install dependencies:
    - Python 3.8+
+   - Keyboard 0.13.5+ (Python Package)
    - Selenium 3.141+ (Python Package)
    - Geckodriver 0.29+
    - Firefox 86+
