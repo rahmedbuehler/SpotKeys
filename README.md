@@ -19,7 +19,7 @@ A script that allows simple manipulation of Spotify's webplayer (play, pause, ne
 
    Spotify username and password are optional.
   
-3. Run .exe.
+3. Run SpotKeys.exe.
 
 ### Option 2
 
