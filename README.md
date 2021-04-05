@@ -40,3 +40,5 @@ A script that allows simple manipulation of Spotify's webplayer (play, pause, ne
    Spotify username and password are optional.
 
 3. Run SpotKeys.py.
+    - On Linux, the keyboard Python package needs root access in order to function.
+        > sudo -E PATH=$PATH python3 SpotKeys.py
