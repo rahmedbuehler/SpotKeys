@@ -67,65 +67,93 @@ class Hotkey_Tracker:
         if self.value != "Exit":
             self.value = None
 
+class SpotKeys_Manager:
+
+    def __init__(self):
+        print("Starting SpotKeys...\n")
+
+        self.settings = Profile()
+        self.settings.read_settings()
+
+        self.settings.output_key_bindings()
+
+        # Set hotkeys
+        self.tracker = Hotkey_Tracker()
+        keyboard.add_hotkey(self.settings.keys["Exit"], self.tracker.fire, args=["Exit"], suppress=True)
+        keyboard.add_hotkey(self.settings.keys["Previous"], self.tracker.fire, args=["Previous"], suppress=True)
+        keyboard.add_hotkey(self.settings.keys["Next"], self.tracker.fire, args=["Next"], suppress=True)
+        keyboard.add_hotkey(self.settings.keys["Play/Pause"], self.tracker.fire, args=["Play/Pause"], suppress=True)
+        keyboard.add_hotkey(self.settings.keys["Volume Up"], self.tracker.fire, args=["Volume Up"], suppress=True)
+        keyboard.add_hotkey(self.settings.keys["Volume Down"], self.tracker.fire, args=["Volume Down"], suppress=True)
+
+        # Switch to non-root user (required by Firefox)
+        original_uid = int(os.getenv("SUDO_UID"))
+        os.setreuid(original_uid,original_uid)
+
+        ff_options = Options()
+        ff_options.binary_location = self.settings.ff_path
+        # Needed to play DRM content
+        ff_options.set_preference('media.gmp-manager.updateEnabled',True)
+        ff_options.set_preference('media.eme.enabled',True)
+
+        self.driver = webdriver.Firefox(options = ff_options)
+        self.driver.get('https://accounts.spotify.com/en/login?continue=https:%2F%2Fopen.spotify.com%2F')
+
+        if self.settings.addon_path != None:
+            self.driver.install_addon(self.settings.addon_path,temporary=True)
+        if self.settings.username != None:
+            user_element = self.driver.find_element_by_id('login-username')
+            user_element.clear()
+            user_element.send_keys(self.settings.username)
+            if self.settings.password != None:
+                password_element = self.driver.find_element_by_id('login-password')
+                password_element.clear()
+                password_element.send_keys(self.settings.password)
+                password_element.send_keys(Keys.RETURN)
+
+    def close_popups(self):
+        try:
+            # Cookies Popup
+            self.driver.find_element_by_id('onetrust-close-btn-container').click()
+        except:
+            pass
+
+    def run (self):
+        '''
+        Listen for hotkeys and execute corresponding actions.
+        '''
+        last_url = ''
+        initialized = False
+        while self.tracker.value != "Exit":
+            if last_url != self.driver.current_url:
+                last_url = self.driver.current_url
+                btns = self.driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')
+                volume_slider = self.driver.find_elements_by_css_selector('button.middle-align.progress-bar__slider')
+                if len(btns) > 3 and len(volume_slider) > 1:
+                    volume_slider = volume_slider[1] # Currently 4 such Elements; want the 2nd
+                    volume_up = ActionChains(self.driver)
+                    volume_up.drag_and_drop_by_offset(volume_slider,10,0)
+                    volume_down = ActionChains(self.driver)
+                    volume_down.drag_and_drop_by_offset(volume_slider,-10,0)
+                    initialized = True
+                else:
+                    initialized = False
+                self.close_popups()
+            if initialized:
+                if self.tracker.value == "Previous":
+                    btns[1].click()
+                elif self.tracker.value == "Next":
+                    btns[3].click()
+                elif self.tracker.value == "Play/Pause":
+                    btns[2].click()
+                elif self.tracker.value == "Volume Up":
+                    volume_up.perform()
+                elif self.tracker.value == "Volume Down":
+                    volume_down.perform()
+                self.tracker.clear()
+        self.driver.quit()
+        print("\nExiting SpotKeys...\n")
+
 if __name__ == "__main__":
-    settings = Profile()
-    settings.read_settings()
-    print("Starting SpotKeys...\n")
-    settings.output_key_bindings()
-    tracker = Hotkey_Tracker()
-    keyboard.add_hotkey(settings.keys["Exit"], tracker.fire, args=["Exit"], suppress=True)
-    keyboard.add_hotkey(settings.keys["Previous"], tracker.fire, args=["Previous"], suppress=True)
-    keyboard.add_hotkey(settings.keys["Next"], tracker.fire, args=["Next"], suppress=True)
-    keyboard.add_hotkey(settings.keys["Play/Pause"], tracker.fire, args=["Play/Pause"], suppress=True)
-    keyboard.add_hotkey(settings.keys["Volume Up"], tracker.fire, args=["Volume Up"], suppress=True)
-    keyboard.add_hotkey(settings.keys["Volume Down"], tracker.fire, args=["Volume Down"], suppress=True)
-
-    original_uid = int(os.getenv("SUDO_UID"))
-    os.setreuid(original_uid,original_uid) # Switch to non-root user (required by Firefox)
-    options = Options()
-    options.binary_location = settings.ff_path
-    options.set_preference('media.gmp-manager.updateEnabled',True) # Needed to play DRM content
-    driver = webdriver.Firefox(options = options)
-    driver.get('https://accounts.spotify.com/en/login?continue=https:%2F%2Fopen.spotify.com%2F')
-
-    if settings.addon_path != None:
-        driver.install_addon(settings.addon_path,temporary=True)
-    if settings.username != None:
-        user_element = driver.find_element_by_id('login-username')
-        user_element.clear()
-        user_element.send_keys(settings.username)
-        if settings.password != None:
-            password_element = driver.find_element_by_id('login-password')
-            password_element.clear()
-            password_element.send_keys(settings.password)
-            password_element.send_keys(Keys.RETURN)
-
-    last_url = ''
-    initialized = False
-    while tracker.value != "Exit":
-        if last_url != driver.current_url:
-            btns = driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')
-            volume_slider = driver.find_elements_by_css_selector('button.middle-align.progress-bar__slider')
-            if len(btns) > 3 and len(volume_slider) > 1:
-                volume_slider = volume_slider[1] # Currently 4 such Elements; want the 2nd
-                volume_up = ActionChains(driver)
-                volume_up.drag_and_drop_by_offset(volume_slider,10,0)
-                volume_down = ActionChains(driver)
-                volume_down.drag_and_drop_by_offset(volume_slider,-10,0)
-                initialized = True
-            else:
-                initialized = False
-        if initialized:
-            if tracker.value == "Previous":
-                btns[1].click()
-            elif tracker.value == "Next":
-                btns[3].click()
-            elif tracker.value == "Play/Pause":
-                btns[2].click()
-            elif tracker.value == "Volume Up":
-                volume_up.perform()
-            elif tracker.value == "Volume Down":
-                volume_down.perform()
-            tracker.clear()
-    driver.quit()
-    print("\nExiting SpotKeys...\n")
+    spotkeys = SpotKeys_Manager()
+    spotkeys.run()
