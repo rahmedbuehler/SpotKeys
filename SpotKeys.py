@@ -32,8 +32,6 @@ class Profile:
                     self.password = line.split("=")[1].strip()
                 elif line.startswith("FF_PATH"):
                     self.ff_path = line.split("=")[1].strip()
-                elif line.startswith("GECKO_PATH"):
-                    self.gecko_path = line.split("=")[1].strip()
                 elif line.startswith("ADDON_PATH"):
                     self.addon_path = line.split("=")[1].strip()
                 else:
@@ -98,7 +96,9 @@ class SpotKeys_Manager:
 
         self.driver = webdriver.Firefox(options = ff_options)
         self.driver.get('https://accounts.spotify.com/en/login?continue=https:%2F%2Fopen.spotify.com%2F')
+        self.spotkeys_window_handle = self.driver.current_window_handle
 
+        # Apply optional settings parameters if present
         if self.settings.addon_path != None:
             self.driver.install_addon(self.settings.addon_path,temporary=True)
         if self.settings.username != None:
@@ -125,6 +125,8 @@ class SpotKeys_Manager:
         last_url = ''
         initialized = False
         while self.tracker.value != "Exit":
+            if self.driver.current_window_handle != self.spotkeys_window_handle:
+                driver.switch_to_window(self.spotkeys_window_handle)
             if last_url != self.driver.current_url:
                 last_url = self.driver.current_url
                 btns = self.driver.find_elements_by_xpath('''//div[@class='player-controls__buttons']//button''')
@@ -153,6 +155,9 @@ class SpotKeys_Manager:
                 self.tracker.clear()
         self.driver.quit()
         print("\nExiting SpotKeys...\n")
+
+    def get_driver(self):
+        return self.driver
 
 if __name__ == "__main__":
     spotkeys = SpotKeys_Manager()

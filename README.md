@@ -1,5 +1,5 @@
 # SpotKeys
-A script that allows simple manipulation of Spotify's webplayer (play, pause, next, previous, volume up, and volume down) with keyboard shortcuts.
+A script that allows simple manipulation of Spotify's webplayer (play, pause, next, previous, volume up, and volume down) with keyboard shortcuts regardless of focus.
 
 ## Set Up
 
@@ -30,11 +30,9 @@ A script that allows simple manipulation of Spotify's webplayer (play, pause, ne
    - Geckodriver 0.29+
    - Firefox 86+
 
-2. Add path to Geckodriver and Firefox to SpotKeys_Settings.txt as well as path to any desired addon. For example,
+2. Place geckodriver.exe in the same folder as SpotKeys.py; add path to Firefox to SpotKeys_Settings.txt as well as path to any desired addon. For example,
 
    > FF_PATH = C:\Program Files (x86)\Mozilla Firefox\firefox.exe
-
-   > GECKO_PATH = C:\Python\geckodriver.exe
 
    > ADDON_PATH = C:\Users\USER\AppData\Roaming\Mozilla\Firefox\Profiles\o3m64jnd.default-1234567890123\extensions\ADDON.xpi
 
